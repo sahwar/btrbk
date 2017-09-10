@@ -1,43 +1,29 @@
 #!/usr/bin/perl -T
-
-=head1 NAME
-
-btrbk - create snapshots and remote backups of btrfs subvolumes
-
-=head1 SYNOPSIS
-
-    btrbk --help
-
-=head1 DESCRIPTION
-
-Backup tool for btrfs subvolumes, taking advantage of btrfs specific
-send-receive mechanism, allowing incremental backups at file-system
-level.
-
-The full btrbk documentation is available at L<http://digint.ch/btrbk/>.
-
-=head1 AUTHOR
-
-Axel Burri <axel@tty0.ch>
-
-=head1 COPYRIGHT AND LICENSE
-
-Copyright (c) 2014-2016 Axel Burri. All rights reserved.
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-=cut
+#
+# btrbk - Create snapshots and remote backups of btrfs subvolumes
+#
+# Copyright (C) 2014-2017 Axel Burri
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# ---------------------------------------------------------------------
+# The official btrbk website is located at:
+# http://digint.ch/btrbk/
+#
+# Author:
+# Axel Burri <axel@tty0.ch>
+# ---------------------------------------------------------------------
 
 use strict;
 use warnings FATAL => qw( all );
@@ -46,7 +32,7 @@ use Carp qw(confess);
 use Getopt::Long qw(GetOptions);
 use Time::Local qw( timelocal timegm timegm_nocheck );
 
-our $VERSION         = '0.25.1-dev';
+our $VERSION         = '0.26.0-dev';
 our $AUTHOR          = 'Axel Burri <axel@tty0.ch>';
 our $PROJECT_HOME    = '<http://digint.ch/btrbk/>';
 
@@ -200,11 +186,11 @@ my %table_formats = (
                    RALIGN => { size=>1, used=>1, device_size=>1, device_allocated=>1, device_unallocated=>1, device_missing=>1, device_used=>1, free=>1, free_min=>1, data_ratio=>1, metadata_ratio=>1, global_reserve=>1, global_reserve_used=>1 },
                  },
 
-  transaction => { table => [ qw(           type status          target_host target_subvol source_host source_subvol parent_subvol         ) ],
-                   long  => [ qw( localtime type status duration target_host target_subvol source_host source_subvol parent_subvol message ) ],
-                   raw   => [ qw( time localtime type status duration target_url source_url parent_url message ) ],
-                   tlog  => [ qw( localtime type status duration target_url source_url parent_url message ) ],
-                   syslog  => [ qw( type status duration target_url source_url parent_url message ) ],
+  transaction => { table  => [ qw(                type status          target_host target_subvol source_host source_subvol parent_subvol         ) ],
+                   long   => [ qw(      localtime type status duration target_host target_subvol source_host source_subvol parent_subvol message ) ],
+                   tlog   => [ qw(      localtime type status          target_url source_url parent_url message ) ],
+                   syslog => [ qw(                type status          target_url source_url parent_url message ) ],
+                   raw    => [ qw( time localtime type status duration target_url source_url parent_url message ) ],
                  },
 
   origin_tree => { table => [ qw( tree uuid parent_uuid received_uuid ) ],
@@ -280,24 +266,26 @@ sub HELP_MESSAGE
   print STDERR "\n";
   print STDERR "options:\n";
   #            "--------------------------------------------------------------------------------"; # 80
-  print STDERR "   -h, --help            display this help message\n";
-  print STDERR "       --version         display version information\n";
-  print STDERR "   -c, --config=FILE     specify configuration file\n";
-  print STDERR "   -n, --dry-run         perform a trial run with no changes made\n";
-  print STDERR "   -p, --preserve        preserve all backups (do not delete any old targets)\n";
-  print STDERR "   -r, --resume-only     resume only (do not create new snapshots, only resume\n";
-  print STDERR "                         missing backups)\n";
-  print STDERR "   -v, --verbose         be verbose (set loglevel=info)\n";
-  print STDERR "   -q, --quiet           be quiet (do not print summary for the \"run\" command)\n";
-  print STDERR "   -l, --loglevel=LEVEL  set logging level (warn, info, debug, trace)\n";
-  print STDERR "   -t, --table           change output to table format\n";
-  print STDERR "       --format=FORMAT   change output format, FORMAT=table|long|raw\n";
-  print STDERR "       --print-schedule  print scheduler details (for the \"run\" command)\n";
-  print STDERR "       --progress        show progress bar on send-receive operation\n";
+  print STDERR "   -h, --help                display this help message\n";
+  print STDERR "       --version             display version information\n";
+  print STDERR "   -c, --config=FILE         specify configuration file\n";
+  print STDERR "   -n, --dry-run             perform a trial run with no changes made\n";
+  print STDERR "   -p, --preserve            preserve all (do not delete anything)\n";
+  print STDERR "       --preserve-snapshots  preserve snapshots (do not delete snapshots)\n";
+  print STDERR "       --preserve-backups    preserve backups (do not delete backups)\n";
+  print STDERR "   -v, --verbose             be verbose (set loglevel=info)\n";
+  print STDERR "   -q, --quiet               be quiet (do not print backup summary)\n";
+  print STDERR "   -l, --loglevel=LEVEL      set logging level (warn, info, debug, trace)\n";
+  print STDERR "   -t, --table               change output to table format\n";
+  print STDERR "       --format=FORMAT       change output format, FORMAT=table|long|raw\n";
+  print STDERR "       --print-schedule      print scheduler details (for the \"run\" command)\n";
+  print STDERR "       --progress            show progress bar on send-receive operation\n";
   print STDERR "\n";
   print STDERR "commands:\n";
-  print STDERR "   run                   perform backup operations as defined in the config\n";
+  print STDERR "   run                   run snapshot and backup operations\n";
   print STDERR "   dryrun                don't run btrfs commands; show what would be executed\n";
+  print STDERR "   snapshot              run snapshot operations only\n";
+  print STDERR "   resume                run backup operations, and delete snapshots\n";
   print STDERR "   stats                 print snapshot/backup statistics\n";
   print STDERR "   list <subcommand>     available subcommands are:\n";
   print STDERR "      backups            all backups and corresponding snapshots\n";
@@ -458,7 +446,7 @@ sub end_transaction($$)
   die("end_transaction() while no transaction is running") unless($current_transaction);
   foreach (@$current_transaction) {
     die("end_transaction() has different type") unless($_->{type} eq $type);
-    action($type, %$_, status => $status, duration => ($dryrun ? undef : ($time - $_->{time})));
+    action($type, %$_, status => $status, time => $time, duration => ($dryrun ? undef : ($time - $_->{time})));
   }
   $current_transaction = undef;
 }
@@ -855,28 +843,37 @@ sub btrfs_subvolume_show($)
 
   return undef unless(defined($ret));
 
-  my $real_path;
-  if($ret =~ /^($file_match)/) {
-    $real_path = $1;
-    $real_path = check_file($real_path, { absolute => 1 }, sanitize => 1);
-    return undef unless(defined($real_path));
-    DEBUG "Real path for subvolume \"$vol->{PRINT}\" is: $real_path" if($real_path ne $path);
-    $realpath_cache{$vol->{URL}} = $real_path if($real_path ne $path);
+  my @ret_lines = split("\n", $ret);
+  unless(@ret_lines) {
+    ERROR "Failed to parse subvolume detail (unsupported btrfs-progs) for: $vol->{PRINT}";
+    return undef;
   }
-  else {
-    $real_path = $path;
-    WARN "No real path provided by \"btrfs subvolume show\" for subvolume \"$vol->{PRINT}\", using: $path";
+
+  if($ret_lines[0] =~ /^($file_match)/) {
+    # use the resolved full path for realpath_cache (if present)
+    # btrfs-progs <  4.12 prints the full (absolute, resolved) path
+    # btrfs-progs >= 4.12 prints the relative path to btrfs root (or "/" if it is the root)
+    my $real_or_rel_path = $1;
+    if($real_or_rel_path ne '/') {
+      my $real_path = check_file($real_or_rel_path, { absolute => 1 }, sanitize => 1); # returns undef if not absolute
+      if($real_path && ($real_path ne $path)) {
+        DEBUG "Real path for subvolume \"$vol->{PRINT}\" is: $real_path";
+        $realpath_cache{$vol->{URL}} = $real_path;
+      }
+    }
+    else {
+      DEBUG "No real path provided by \"btrfs subvolume show\" for subvolume \"$vol->{PRINT}\"";
+    }
   }
 
   my %detail;
-  if($ret =~ /^\Q$real_path\E is (btrfs root|toplevel subvolume)/) {
+  if($ret_lines[0] =~ / is (btrfs root|toplevel subvolume)$/) {
     # btrfs-progs <  4.4 prints: "<subvol> is btrfs root"
     # btrfs-progs >= 4.4 prints: "<subvol> is toplevel subvolume"
     # btrfs-progs >= 4.8.3 does not enter here, as output shares format with regular subvolumes
     $detail{id} = 5;
   }
-  elsif($ret =~ /^\Q$real_path\E/) {
-    TRACE "btr_detail: found btrfs subvolume: $vol->{PRINT}";
+  else {
     # NOTE: received_uuid is not required here, as btrfs-progs < 4.1 does not give us that information.
     #       no worries, we get this from btrfs_subvolume_list() for all subvols.
     my @required_keys = qw(name uuid parent_uuid id gen cgen top_level readonly);
@@ -921,10 +918,6 @@ sub btrfs_subvolume_show($)
       }
     }
   }
-  else {
-    ERROR "Failed to parse subvolume detail (unsupported btrfs-progs) for: $vol->{PRINT}";
-    return undef;
-  }
 
   if($detail{id} == 5) {
     # NOTE: as of btrfs-progs v4.8.3, we get full output for root
@@ -933,8 +926,6 @@ sub btrfs_subvolume_show($)
     DEBUG "found btrfs root: $vol->{PRINT}";
     %detail = ( id => 5, is_root => 1 );
   }
-
-  $detail{REAL_PATH} = $real_path;
 
   return \%detail;
 }
@@ -966,7 +957,7 @@ sub btrfs_subvolume_list($;@)
 {
   my $vol = shift || die;
   my %opts = @_;
-  my $path = $vol->{PATH} // die;  # deliberately NOT using REAL_PATH here!
+  my $path = $vol->{PATH} // die;
   my @filter_options = ('-a');
   push(@filter_options, '-o') if($opts{subvol_only});
 
@@ -983,14 +974,6 @@ sub btrfs_subvolume_list($;@)
   my @nodes;
   foreach (split(/\n/, $ret))
   {
-    # ID <ID> top level <ID> path <path> where path is the relative path
-    # of the subvolume to the top level subvolume. The subvolume?s ID may
-    # be used by the subvolume set-default command, or at mount time via
-    # the subvolid= option. If -p is given, then parent <ID> is added to
-    # the output between ID and top level. The parent?s ID may be used at
-    # mount time via the subvolrootid= option.
-
-    # NOTE: btrfs-progs prior to v3.17 do not support the -R flag (unsupported since
     my %node;
     unless(/^ID ([0-9]+) gen ([0-9]+) cgen ([0-9]+) top level ([0-9]+) parent_uuid ([0-9a-z-]+) received_uuid ([0-9a-z-]+) uuid ([0-9a-z-]+) path (.+)$/) {
       ERROR "Failed to parse subvolume list (unsupported btrfs-progs) for: $vol->{PRINT}";
@@ -1724,7 +1707,7 @@ sub _fill_url_cache
   my $node = shift;
   my $abs_path = shift;
   my $node_subdir = shift;
-  # TRACE "_fill_url_cache: $abs_path";
+  TRACE "_fill_url_cache: $abs_path" . ($node_subdir ? " (subdir=$node_subdir)" : "");
 
   # traverse tree from given node and update tree cache
   $url_cache{$abs_path} = $node unless(defined($node_subdir));
@@ -1843,7 +1826,7 @@ sub vinfo_rsh($;@)
   my $ssh_identity    = config_key($config, "ssh_identity");
   my $ssh_compression = config_key($config, "ssh_compression");
   my $ssh_cipher_spec = config_key($config, "ssh_cipher_spec") // "default";
-  my @ssh_options;
+  my @ssh_options = ('-q');
   push(@ssh_options, '-p', $ssh_port) if($ssh_port ne "default");
   push(@ssh_options, '-c', $ssh_cipher_spec) if($ssh_cipher_spec ne "default");
   if($ssh_identity) {
@@ -1953,7 +1936,6 @@ sub vinfo_init_root($;@)
   my $vol = shift || die;
   my %opts = @_;
   my $tree_root;
-  my @fill_cache;
 
   # use cached info if present
   $tree_root = $url_cache{$vol->{URL}};
@@ -1966,15 +1948,10 @@ sub vinfo_init_root($;@)
     }
   }
 
-  # TODO: replace the subvolume_show part as soon as resolve_subdir stuff has stabilized
   unless($tree_root) {
     # url_cache miss, read the subvolume detail
     my $detail = btrfs_subvolume_show($vol);
     if($detail) {
-      my $real_path = $realpath_cache{$vol->{URL}};
-      push @fill_cache, $vol->{URL};
-      push @fill_cache, $vol->{URL_PREFIX} . $real_path if($real_path && (not $url_cache{$vol->{URL_PREFIX} . $real_path}));
-
       # check uuid_cache
       if($detail->{uuid}) {
         $tree_root = $uuid_cache{$detail->{uuid}};
@@ -1984,9 +1961,26 @@ sub vinfo_init_root($;@)
         # cache miss, read the fresh tree
         $tree_root = btr_tree($vol, $detail->{id});
       }
+
+      # fill cache
+      if($tree_root) {
+        _fill_url_cache($tree_root, $vol->{URL});
+        my $real_path = $realpath_cache{$vol->{URL}};
+        if($real_path) {
+          my $real_url = $vol->{URL_PREFIX} . $real_path;
+          _fill_url_cache($tree_root, $real_url) unless($url_cache{$real_url});
+        }
+      }
     }
     elsif($opts{resolve_subdir}) {
       # $vol is not a subvolume, read btrfs tree from mount point
+
+      # NOTE: for now, this is only used for send-receive targets (in
+      # order to allow subdirs within btrfs filesystems).
+
+      # TODO: use this (replace the subvolume_show part) for source
+      # volumes if we decide to allow subdirs.
+
       my ($mnt_path, $real_path, $id) = btrfs_mountpoint($vol);
       return undef unless($mnt_path && $real_path);
       my $mnt_tree_root = $url_cache{$vol->{URL_PREFIX} . $mnt_path};
@@ -2003,7 +1997,6 @@ sub vinfo_init_root($;@)
           }
         }
         $mnt_tree_root = btr_tree($mnt_vol, $id);
-        TRACE "url_cache fill: $mnt_vol->{PRINT}";
         _fill_url_cache($mnt_tree_root, $mnt_vol->{URL});
       }
 
@@ -2018,7 +2011,6 @@ sub vinfo_init_root($;@)
       $vol->{NODE_SUBDIR} = $node_subdir if($node_subdir ne '');
       $tree_root = $ret->{node};
 
-      TRACE "url_cache fill: $vol->{PRINT}" . ($vol->{NODE_SUBDIR} ? " (subdir=$vol->{NODE_SUBDIR})" : "");
       _fill_url_cache($tree_root, $vol->{URL}, $vol->{NODE_SUBDIR});
     }
     else {
@@ -2026,12 +2018,6 @@ sub vinfo_init_root($;@)
     }
   }
   return undef unless($tree_root);
-
-  # fill cache if needed
-  foreach (@fill_cache) {
-    TRACE "url_cache fill: $_";
-    _fill_url_cache($tree_root, $_);
-  }
 
   $vol->{node} = $tree_root;
 
@@ -3486,6 +3472,11 @@ sub print_header(@)
   if($args{info}) {
     print "\n" . join("\n", grep(defined, @{$args{info}})) . "\n";
   }
+  if($args{options} && (scalar @{$args{options}})) {
+    print "\nOptions:\n    ";
+    print join("\n    ", @{$args{options}});
+    print "\n";
+  }
   if($args{legend}) {
     print "\nLegend:\n    ";
     print join("\n    ", @{$args{legend}});
@@ -3715,23 +3706,26 @@ MAIN:
   @tm_now = localtime($start_time);
 
   my %config_override_cmdline;
-  my ($config_cmdline, $quiet, $verbose, $preserve_backups, $resume_only, $print_schedule, $lockfile_cmdline);
+  my ($config_cmdline, $quiet, $verbose, $preserve_snapshots, $preserve_backups, $skip_snapshots, $skip_backups, $print_schedule, $lockfile_cmdline);
+  my $resume_only_DEPRECATED;  # as of btrbk-v0.26.0
   unless(GetOptions(
-    'help|h'         => sub { VERSION_MESSAGE(); HELP_MESSAGE(0); exit 0; },
-    'version'        => sub { VERSION_MESSAGE(); exit 0; },
-    'config|c=s'     => \$config_cmdline,
-    'dry-run|n'      => \$dryrun,
-    'preserve|p'     => \$preserve_backups,
-    'resume-only|r'  => \$resume_only,
-    'quiet|q'        => \$quiet,
-    'verbose|v'      => sub { $loglevel = 2; },
-    'loglevel|l=s'   => \$loglevel,
-    'progress'       => \$show_progress,
-    'table|t'        => sub { $output_format = "table" },
-    'format=s'       => \$output_format,
-    'print-schedule' => \$print_schedule,
-    'lockfile=s'     => \$lockfile_cmdline,
-    'override=s'    => \%config_override_cmdline,  # e.g. --override=incremental=no
+    'help|h'             => sub { VERSION_MESSAGE(); HELP_MESSAGE(0); exit 0; },
+    'version'            => sub { VERSION_MESSAGE(); exit 0; },
+    'config|c=s'         => \$config_cmdline,
+    'dry-run|n'          => \$dryrun,
+    'preserve|p'         => sub { $preserve_snapshots = 1, $preserve_backups = 1 },
+    'preserve-snapshots' => \$preserve_snapshots,
+    'preserve-backups'   => \$preserve_backups,
+    'resume-only|r'      => \$resume_only_DEPRECATED,
+    'quiet|q'            => \$quiet,
+    'verbose|v'          => sub { $loglevel = 2; },
+    'loglevel|l=s'       => \$loglevel,
+    'progress'           => \$show_progress,
+    'table|t'            => sub { $output_format = "table" },
+    'format=s'           => \$output_format,
+    'print-schedule'     => \$print_schedule,
+    'lockfile=s'         => \$lockfile_cmdline,
+    'override=s'         => \%config_override_cmdline,  # e.g. --override=incremental=no
    ))
   {
     VERSION_MESSAGE();
@@ -3755,6 +3749,14 @@ MAIN:
   else                            { $loglevel = 1; }
   require_data_dumper() if(($loglevel >= 4) || ($VERSION =~ /-dev$/));
 
+  # DEPRECATED options
+  if($resume_only_DEPRECATED) {
+    WARN "Found deprecated command line option \"-r, --resume-only\": Use \"btrbk resume --preserve\"";
+    $skip_snapshots = 1;
+    $preserve_backups = 1;
+    $preserve_snapshots = 1;
+  }
+
   # check command line options
   if($show_progress && (not check_exe('pv'))) {
     WARN 'Found option "--progress", but required executable "pv" does not exist on your system. Please install "pv".';
@@ -3768,6 +3770,19 @@ MAIN:
   if(($command eq "run") || ($command eq "dryrun")) {
     $action_run = 1;
     $dryrun = 1 if($command eq "dryrun");
+    $args_allow_group = 1;
+    @filter_args = @ARGV;
+  }
+  elsif($command eq "snapshot") {
+    $action_run = 1;
+    $skip_backups = 1;
+    $preserve_backups = 1;
+    $args_allow_group = 1;
+    @filter_args = @ARGV;
+  }
+  elsif($command eq "resume") {
+    $action_run = 1;
+    $skip_snapshots = 1;
     $args_allow_group = 1;
     @filter_args = @ARGV;
   }
@@ -4118,12 +4133,13 @@ MAIN:
     }
 
 
-    my $del_schedule_results = [];
-    if($preserve_backups || $resume_only) {
+    my $del_schedule_results;
+    if($preserve_backups) {
       INFO "Preserving all archives (option \"-p\" or \"-r\" present)";
     }
     else
     {
+      $del_schedule_results = [];
       foreach my $sroot (vinfo_subsection($config, 'archive_source')) {
         foreach my $droot (vinfo_subsection($sroot, 'target')) {
           my $snapshot_name = config_key($droot, "snapshot_name") // die;
@@ -4160,7 +4176,7 @@ MAIN:
         print "\n";
       }
 
-      if($print_schedule && not ($preserve_backups || $resume_only)) {
+      if($print_schedule && $del_schedule_results) {
         my @data = map { { %$_, vinfo_prefixed_keys("", $_->{value}) }; } @$del_schedule_results;
         print_formatted("schedule", \@data, title => "DELETE SCHEDULE");
         print "\n";
@@ -4200,8 +4216,12 @@ MAIN:
           }
         }
 
+        my @cmdline_options;
+        push @cmdline_options, "preserve: Preserved all archives" if($preserve_backups);
+
         print_header(title => "Archive Summary",
                      time => $start_time,
+                     options => \@cmdline_options,
                      legend => [
                        "++.  created directory",
                        "---  deleted subvolume",
@@ -4537,6 +4557,16 @@ MAIN:
       DEBUG "Initializing subvolume section: $svol->{PRINT}";
       unless(vinfo_init_root($svol)) {
         ABORTED($svol, "Failed to fetch subvolume detail" . ($err ? ": $err" : ""));
+        WARN "Skipping subvolume \"$svol->{PRINT}\": $abrt";
+        next;
+      }
+      if($svol->{node}{readonly}) {
+        ABORTED($svol, "subvolume is readonly");
+        WARN "Skipping subvolume \"$svol->{PRINT}\": $abrt";
+        next;
+      }
+      if($svol->{node}{received_uuid} ne '-') {
+        ABORTED($svol, "\"Received UUID\" is set");
         WARN "Skipping subvolume \"$svol->{PRINT}\": $abrt";
         next;
       }
@@ -5032,8 +5062,8 @@ MAIN:
     init_transaction_log(config_key($config, "transaction_log"),
                          config_key($config, "transaction_syslog"));
 
-    if($resume_only) {
-      INFO "Skipping snapshot creation (option \"-r\" present)";
+    if($skip_snapshots) {
+      INFO "Skipping snapshot creation (btrbk resume)";
     }
     else
     {
@@ -5131,96 +5161,101 @@ MAIN:
     #
     # create backups
     #
-    foreach my $sroot (vinfo_subsection($config, 'volume')) {
-      foreach my $svol (vinfo_subsection($sroot, 'subvolume')) {
-        my $snapdir = config_key($svol, "snapshot_dir") // "";
-        my $snapshot_basename = config_key($svol, "snapshot_name") // die;
-        my @snapshot_children = sort({ cmp_date($a->{node}{BTRBK_DATE}, $b->{node}{BTRBK_DATE}) }
-                                     get_snapshot_children($sroot, $svol, $snapdir, $snapshot_basename));
+    if($skip_backups) {
+      INFO "Skipping backup creation (btrbk snapshot)";
+    }
+    else {
+      foreach my $sroot (vinfo_subsection($config, 'volume')) {
+        foreach my $svol (vinfo_subsection($sroot, 'subvolume')) {
+          my $snapdir = config_key($svol, "snapshot_dir") // "";
+          my $snapshot_basename = config_key($svol, "snapshot_name") // die;
+          my @snapshot_children = sort({ cmp_date($a->{node}{BTRBK_DATE}, $b->{node}{BTRBK_DATE}) }
+                                       get_snapshot_children($sroot, $svol, $snapdir, $snapshot_basename));
 
-        foreach my $droot (vinfo_subsection($svol, 'target')) {
-          INFO "Checking for missing backups of subvolume \"$svol->{PRINT}\" in \"$droot->{PRINT}/\"";
-          my @schedule;
-          my $resume_total = 0;
-          my $resume_success = 0;
+          foreach my $droot (vinfo_subsection($svol, 'target')) {
+            INFO "Checking for missing backups of subvolume \"$svol->{PRINT}\" in \"$droot->{PRINT}/\"";
+            my @schedule;
+            my $resume_total = 0;
+            my $resume_success = 0;
 
-          my $droot_subvol_list = vinfo_subvol_list($droot); # cache subvol list for get_receive_targets()
-          foreach my $child (@snapshot_children)
-          {
-            my $warning_seen = [];
-            my @receive_targets = get_receive_targets($droot, $child, exact_match => 1, warn => 1, seen => $warning_seen, droot_subvol_list => $droot_subvol_list );
-            get_receive_targets_fsroot($droot, $child, exclude => $warning_seen, warn => 1); # warn on unexpected on fs
-            if(scalar(@receive_targets)){
-              DEBUG "Found receive target of: $child->{PRINT}";
-              next;
-            }
-
-            DEBUG "Adding backup candidate: $child->{PRINT}";
-            push(@schedule, { value      => $child,
-                              btrbk_date => $child->{node}{BTRBK_DATE},
-                              # not enforcing resuming of latest snapshot anymore (since v0.23.0)
-                              # preserve   => $child->{node}{FORCE_PRESERVE},
-                            });
-          }
-
-          if(scalar @schedule)
-          {
-            DEBUG "Checking schedule for backup candidates";
-            # add all present backups as informative_only: these are needed for correct results of schedule()
-            foreach my $vol (@$droot_subvol_list) {
-              unless($vol->{btrbk_direct_leaf} && ($vol->{node}{BTRBK_BASENAME} eq $snapshot_basename)) {
-                TRACE "Receive target does not match btrbk filename scheme, skipping: $vol->{PRINT}";
+            my $droot_subvol_list = vinfo_subvol_list($droot); # cache subvol list for get_receive_targets()
+            foreach my $child (@snapshot_children)
+            {
+              my $warning_seen = [];
+              my @receive_targets = get_receive_targets($droot, $child, exact_match => 1, warn => 1, seen => $warning_seen, droot_subvol_list => $droot_subvol_list );
+              get_receive_targets_fsroot($droot, $child, exclude => $warning_seen, warn => 1); # warn on unexpected on fs
+              if(scalar(@receive_targets)){
+                DEBUG "Found receive target of: $child->{PRINT}";
                 next;
               }
-              push(@schedule, { informative_only => 1,
-                                value      => $vol,
-                                btrbk_date => $vol->{node}{BTRBK_DATE},
+
+              DEBUG "Adding backup candidate: $child->{PRINT}";
+              push(@schedule, { value      => $child,
+                                btrbk_date => $child->{node}{BTRBK_DATE},
+                                # not enforcing resuming of latest snapshot anymore (since v0.23.0)
+                                # preserve   => $child->{node}{FORCE_PRESERVE},
                               });
             }
-            my ($preserve, undef) = schedule(
-              schedule => \@schedule,
-              preserve => config_preserve_hash($droot, "target"),
-             );
-            my @resume = grep defined, @$preserve;   # remove entries with no value from list (target subvolumes)
-            $resume_total = scalar @resume;
 
-            foreach my $child (sort { $a->{node}{cgen} <=> $b->{node}{cgen} } @resume)
+            if(scalar @schedule)
             {
-              # Continue gracefully (skip instead of abort) on existing (possibly garbled) target
-              my $err_vol = vinfo_subvol($droot, $child->{NAME});
-              if($err_vol) {
-                my $status_msg = "Please delete stray subvolume (\"btrbk clean\"): $err_vol->{PRINT}";
-                WARN "Target subvolume \"$err_vol->{PRINT}\" exists, but is not a receive target of \"$child->{PRINT}\"";
-                WARN $status_msg;
-                WARN "Skipping backup of: $child->{PRINT}";
-                $droot->{SUBVOL_RECEIVED} //= [];
-                push(@{$droot->{SUBVOL_RECEIVED}}, { ERROR => $status_msg, received_subvolume => $err_vol });
-                $droot->{CONFIG}->{UNRECOVERABLE} = $status_msg;
-                next;
+              DEBUG "Checking schedule for backup candidates";
+              # add all present backups as informative_only: these are needed for correct results of schedule()
+              foreach my $vol (@$droot_subvol_list) {
+                unless($vol->{btrbk_direct_leaf} && ($vol->{node}{BTRBK_BASENAME} eq $snapshot_basename)) {
+                  TRACE "Receive target does not match btrbk filename scheme, skipping: $vol->{PRINT}";
+                  next;
+                }
+                push(@schedule, { informative_only => 1,
+                                  value      => $vol,
+                                  btrbk_date => $vol->{node}{BTRBK_DATE},
+                                });
               }
+              my ($preserve, undef) = schedule(
+                schedule => \@schedule,
+                preserve => config_preserve_hash($droot, "target"),
+               );
+              my @resume = grep defined, @$preserve;   # remove entries with no value from list (target subvolumes)
+              $resume_total = scalar @resume;
 
-             INFO "Creating subvolume backup (send-receive) for: $child->{PRINT}";
-              my ($latest_common_src, $latest_common_target) = get_latest_common($sroot, $child, $droot, $snapdir);
-              if(macro_send_receive(source => $child,
-                                    target => $droot,
-                                    parent => $latest_common_src,  # this is <undef> if no common found
-                                    latest_common_target => $latest_common_target,
-                                   ))
+              foreach my $child (sort { $a->{node}{cgen} <=> $b->{node}{cgen} } @resume)
               {
-                $resume_success++;
-              }
-              else {
-                # note: ABORTED flag is already set by macro_send_receive()
-                ERROR("Error while resuming backups, aborting");
-                last;
+                # Continue gracefully (skip instead of abort) on existing (possibly garbled) target
+                my $err_vol = vinfo_subvol($droot, $child->{NAME});
+                if($err_vol) {
+                  my $status_msg = "Please delete stray subvolume (\"btrbk clean\"): $err_vol->{PRINT}";
+                  WARN "Target subvolume \"$err_vol->{PRINT}\" exists, but is not a receive target of \"$child->{PRINT}\"";
+                  WARN $status_msg;
+                  WARN "Skipping backup of: $child->{PRINT}";
+                  $droot->{SUBVOL_RECEIVED} //= [];
+                  push(@{$droot->{SUBVOL_RECEIVED}}, { ERROR => $status_msg, received_subvolume => $err_vol });
+                  $droot->{CONFIG}->{UNRECOVERABLE} = $status_msg;
+                  next;
+                }
+
+                INFO "Creating subvolume backup (send-receive) for: $child->{PRINT}";
+                my ($latest_common_src, $latest_common_target) = get_latest_common($sroot, $child, $droot, $snapdir);
+                if(macro_send_receive(source => $child,
+                                      target => $droot,
+                                      parent => $latest_common_src,  # this is <undef> if no common found
+                                      latest_common_target => $latest_common_target,
+                                     ))
+                {
+                  $resume_success++;
+                }
+                else {
+                  # note: ABORTED flag is already set by macro_send_receive()
+                  ERROR("Error while resuming backups, aborting");
+                  last;
+                }
               }
             }
-          }
 
-          if($resume_total) {
-            INFO "Created $resume_success/$resume_total missing backups";
-          } else {
-            INFO "No missing backups found";
+            if($resume_total) {
+              INFO "Created $resume_success/$resume_total missing backups";
+            } else {
+              INFO "No missing backups found";
+            }
           }
         }
       }
@@ -5230,12 +5265,13 @@ MAIN:
     #
     # remove backups following a preserve daily/weekly/monthly scheme
     #
-    my $schedule_results = [];
-    if($preserve_backups || $resume_only) {
-      INFO "Preserving all snapshots and backups (option \"-p\" or \"-r\" present)";
+    my $schedule_results;
+    if($preserve_snapshots && $preserve_backups) {
+      INFO "Preserving all snapshots and backups";
     }
     else
     {
+      $schedule_results = [];
       foreach my $sroot (vinfo_subsection($config, 'volume')) {
         foreach my $svol (vinfo_subsection($sroot, 'subvolume')) {
           my $snapdir = config_key($svol, "snapshot_dir") // "";
@@ -5270,43 +5306,52 @@ MAIN:
               }
             }
 
-            #
-            # delete backups
-            #
-            INFO "Cleaning backups of subvolume \"$svol->{PRINT}\": $droot->{PRINT}/$snapshot_basename.*";
-            unless(macro_delete($droot, "", $snapshot_basename, $droot,
-                                { preserve     => config_preserve_hash($droot, "target"),
-                                  results      => $schedule_results,
-                                  result_hints => { topic => "backup", root_path => $droot->{PATH} },
-                                },
-                                commit => config_key($droot, "btrfs_commit_delete"),
-                                type   => "delete_target",
-                               ))
-            {
-              $target_aborted = -1;
+            if($preserve_backups) {
+              INFO "Preserving all backups";
+            }
+            else {
+              #
+              # delete backups
+              #
+              INFO "Cleaning backups of subvolume \"$svol->{PRINT}\": $droot->{PRINT}/$snapshot_basename.*";
+              unless(macro_delete($droot, "", $snapshot_basename, $droot,
+                                  { preserve     => config_preserve_hash($droot, "target"),
+                                    results      => $schedule_results,
+                                    result_hints => { topic => "backup", root_path => $droot->{PATH} },
+                                  },
+                                  commit => config_key($droot, "btrfs_commit_delete"),
+                                  type   => "delete_target",
+                                 ))
+              {
+                $target_aborted = 1;
+              }
             }
           }
 
           #
           # delete snapshots
           #
-          if($target_aborted) {
+          if($preserve_snapshots) {
+            INFO "Preserving all snapshots";
+          }
+          elsif($target_aborted) {
             if($target_aborted == -1) {
               INFO "Skipping cleanup of snapshots for subvolume \"$svol->{PRINT}\", as at least one target is skipped by command line argument";
             } else {
               WARN "Skipping cleanup of snapshots for subvolume \"$svol->{PRINT}\", as at least one target aborted earlier";
             }
-            next;
           }
-          INFO "Cleaning snapshots: $sroot->{PRINT}/$snapdir_ts$snapshot_basename.*";
-          macro_delete($sroot, $snapdir, $snapshot_basename, $svol,
-                       { preserve     => config_preserve_hash($svol, "snapshot"),
-                         results      => $schedule_results,
-                         result_hints => { topic => "snapshot", root_path => $sroot->{PATH} },
-                       },
-                       commit => config_key($svol, "btrfs_commit_delete"),
-                       type   => "delete_snapshot",
-                      );
+          else {
+            INFO "Cleaning snapshots: $sroot->{PRINT}/$snapdir_ts$snapshot_basename.*";
+            macro_delete($sroot, $snapdir, $snapshot_basename, $svol,
+                         { preserve     => config_preserve_hash($svol, "snapshot"),
+                           results      => $schedule_results,
+                           result_hints => { topic => "snapshot", root_path => $sroot->{PATH} },
+                         },
+                         commit => config_key($svol, "btrfs_commit_delete"),
+                         type   => "delete_snapshot",
+                        );
+          }
         }
       }
     }
@@ -5327,7 +5372,7 @@ MAIN:
       #
       # print scheduling results
       #
-      if($print_schedule) {
+      if($print_schedule && $schedule_results) {
         my @data = map { { %$_, vinfo_prefixed_keys("", $_->{value}) }; } @$schedule_results;
         my @data_snapshot = grep { $_->{topic} eq "snapshot" } @data;
         my @data_backup   = grep { $_->{topic} eq "backup"   } @data;
@@ -5404,9 +5449,16 @@ MAIN:
           }
         }
 
+        my @cmdline_options;
+        push @cmdline_options, "btrbk resume: No snapshots created" if($skip_snapshots);
+        push @cmdline_options, "btrbk snapshot: No backups created" if($skip_backups);
+        push @cmdline_options, "preserve-snapshots: Preserved all snapshots" if($preserve_snapshots);
+        push @cmdline_options, "preserve-backups: Preserved all backups" if($preserve_backups);
+
         print_header(title => "Backup Summary",
                      config => $config,
                      time => $start_time,
+                     options => \@cmdline_options,
                      legend => [
                        "===  up-to-date subvolume (source snapshot)",
                        "+++  created subvolume (source snapshot)",
@@ -5418,12 +5470,6 @@ MAIN:
 
         print join("\n", @out);
 
-        if($resume_only) {
-          print "\nNOTE: No snapshots created (option -r present)\n";
-        }
-        if($preserve_backups || $resume_only) {
-          print "\nNOTE: Preserved all snapshots and backups (option -p or -r present)\n";
-        }
         if($exit_status || scalar(@unrecoverable)) {
           print "\nNOTE: Some errors occurred, which may result in missing backups!\n";
           print "Please check warning and error messages above.\n";
