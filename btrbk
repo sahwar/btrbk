@@ -2222,7 +2222,7 @@ sub get_snapshot_children($$;$$)
       next;
     }
     unless($_->{node}{readonly}) {
-      WARN "Ignoring read-write snapshot: $_->{PRINT}";
+      WARN_ONCE "Ignoring read-write snapshot: $_->{PRINT}";
       next;
     }
     TRACE "get_snapshot_children: found: $_->{PRINT}";
