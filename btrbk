@@ -695,6 +695,7 @@ sub run_cmd(@)
   my @cmd_pipe;
   my @unsafe_cmd;
   my $compressed = undef;
+  my $large_output;
   my $stream_options = $cmd_pipe_in[0]->{stream_options} // {};
 
   $cmd_pipe_in[0]->{stream_source} = 1;
@@ -707,6 +708,7 @@ sub run_cmd(@)
     $catch_stderr = 1 if($href->{catch_stderr});
     $filter_stderr = $href->{filter_stderr} if($href->{filter_stderr});  # NOTE: last filter wins!
     $destructive = 1 unless($href->{non_destructive});
+    $large_output = 1 if($href->{large_output});
 
     if($href->{check_unsafe}) {
       _safe_cmd($href->{check_unsafe}, \@unsafe_cmd);
@@ -823,7 +825,13 @@ sub run_cmd(@)
   my $ret = `$cmd`;
   if(defined($ret)) {
     chomp($ret);
-    TRACE "Command output:\n$ret" if($loglevel >= 4);
+    if($loglevel >= 4) {
+      if($large_output) {
+        TRACE "Command returned size=" . length($ret) . " (large_output, not dumped)";
+      } else {
+        TRACE "Command output dump:\n" . $ret . "\nEnd command output dump";
+      }
+    }
   }
 
   if($? == -1) {
@@ -1198,6 +1206,7 @@ sub btrfs_subvolume_find_new($$;$)
   my $ret = run_cmd(cmd => vinfo_cmd($vol, "btrfs subvolume find-new", { unsafe => $path }, $lastgen ),
                     rsh => vinfo_rsh($vol),
                     non_destructive => 1,
+                    large_output => 1,
                    );
   unless(defined($ret)) {
     ERROR "Failed to fetch modified files for: $vol->{PRINT}";
